@@ -306,6 +306,10 @@ impl Service {
 		Ok(keys)
 	}
 
+	pub fn signing_keys_for(&self, origin: &ServerName) -> Result<Option<ServerSigningKeys>> {
+		self.db.signing_keys_for(origin)
+	}
+
 	pub fn database_version(&self) -> Result<u64> { self.db.database_version() }
 
 	pub fn bump_database_version(&self, new_version: u64) -> Result<()> { self.db.bump_database_version(new_version) }

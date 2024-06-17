@@ -298,9 +298,7 @@ lasttimelinecount_cache: {lasttimelinecount_cache} / {max_lasttimelinecount_cach
 	/// for the server.
 	pub fn verify_keys_for(&self, origin: &ServerName) -> Result<BTreeMap<OwnedServerSigningKeyId, VerifyKey>> {
 		let signingkeys = self
-			.server_signingkeys
-			.get(origin.as_bytes())?
-			.and_then(|bytes| serde_json::from_slice(&bytes).ok())
+			.signing_keys_for(origin)?
 			.map_or_else(BTreeMap::new, |keys: ServerSigningKeys| {
 				let mut tree = keys.verify_keys;
 				tree.extend(
@@ -310,6 +308,15 @@ lasttimelinecount_cache: {lasttimelinecount_cache} / {max_lasttimelinecount_cach
 				);
 				tree
 			});
+
+		Ok(signingkeys)
+	}
+
+	pub fn signing_keys_for(&self, origin: &ServerName) -> Result<Option<ServerSigningKeys>> {
+		let signingkeys = self
+			.server_signingkeys
+			.get(origin.as_bytes())?
+			.and_then(|bytes| serde_json::from_slice(&bytes).ok());
 
 		Ok(signingkeys)
 	}
