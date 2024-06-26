@@ -1,4 +1,5 @@
 #![allow(clippy::wildcard_imports)]
+#![allow(clippy::enum_glob_use)]
 
 pub(crate) mod appservice;
 pub(crate) mod check;
@@ -22,7 +23,7 @@ pub(crate) use service::{services, user_is_local};
 
 pub(crate) use crate::{
 	handler::Service,
-	utils::{escape_html, get_room_info},
+	utils::{escape_html, get_room_info, process_command},
 };
 
 mod_ctor! {}

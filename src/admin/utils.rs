@@ -4,6 +4,14 @@ use service::user_is_local;
 
 use crate::{services, Result};
 
+macro_rules! process_command {
+	($func:expr) => {
+		Box::pin($func).await?
+	};
+}
+
+pub(crate) use process_command;
+
 pub(crate) fn escape_html(s: &str) -> String {
 	s.replace('&', "&amp;")
 		.replace('<', "&lt;")

@@ -7,6 +7,7 @@ use ruma::{events::room::message::RoomMessageEventContent, EventId, OwnedRoomOrA
 use tester::TesterCommand;
 
 use self::commands::*;
+use crate::process_command;
 
 #[cfg_attr(test, derive(Debug))]
 #[derive(Subcommand)]
@@ -181,59 +182,60 @@ pub(super) enum DebugCommand {
 }
 
 pub(super) async fn process(command: DebugCommand, body: Vec<&str>) -> Result<RoomMessageEventContent> {
+	use DebugCommand::*;
 	Ok(match command {
-		DebugCommand::Echo {
+		Echo {
 			message,
-		} => echo(body, message).await?,
-		DebugCommand::GetSigningKeys {
+		} => process_command!(echo(body, message)),
+		GetSigningKeys {
 			server_name,
 			cached,
-		} => get_signing_keys(body, server_name, cached).await?,
-		DebugCommand::GetAuthChain {
+		} => process_command!(get_signing_keys(body, server_name, cached)),
+		GetAuthChain {
 			event_id,
-		} => get_auth_chain(body, event_id).await?,
-		DebugCommand::ParsePdu => parse_pdu(body).await?,
-		DebugCommand::GetPdu {
+		} => process_command!(get_auth_chain(body, event_id)),
+		ParsePdu => process_command!(parse_pdu(body)),
+		GetPdu {
 			event_id,
-		} => get_pdu(body, event_id).await?,
-		DebugCommand::GetRemotePdu {
+		} => process_command!(get_pdu(body, event_id)),
+		GetRemotePdu {
 			event_id,
 			server,
-		} => get_remote_pdu(body, event_id, server).await?,
-		DebugCommand::GetRoomState {
+		} => process_command!(get_remote_pdu(body, event_id, server)),
+		GetRoomState {
 			room_id,
-		} => get_room_state(body, room_id).await?,
-		DebugCommand::Ping {
+		} => process_command!(get_room_state(body, room_id)),
+		Ping {
 			server,
-		} => ping(body, server).await?,
-		DebugCommand::ForceDeviceListUpdates => force_device_list_updates(body).await?,
-		DebugCommand::ChangeLogLevel {
+		} => process_command!(ping(body, server)),
+		ForceDeviceListUpdates => process_command!(force_device_list_updates(body)),
+		ChangeLogLevel {
 			filter,
 			reset,
-		} => change_log_level(body, filter, reset).await?,
-		DebugCommand::SignJson => sign_json(body).await?,
-		DebugCommand::VerifyJson => verify_json(body).await?,
-		DebugCommand::FirstPduInRoom {
+		} => process_command!(change_log_level(body, filter, reset)),
+		SignJson => process_command!(sign_json(body)),
+		VerifyJson => process_command!(verify_json(body)),
+		FirstPduInRoom {
 			room_id,
-		} => first_pdu_in_room(body, room_id).await?,
-		DebugCommand::LatestPduInRoom {
+		} => process_command!(first_pdu_in_room(body, room_id)),
+		LatestPduInRoom {
 			room_id,
-		} => latest_pdu_in_room(body, room_id).await?,
-		DebugCommand::GetRemotePduList {
+		} => process_command!(latest_pdu_in_room(body, room_id)),
+		GetRemotePduList {
 			server,
 			force,
-		} => get_remote_pdu_list(body, server, force).await?,
-		DebugCommand::ForceSetRoomStateFromServer {
+		} => process_command!(get_remote_pdu_list(body, server, force)),
+		ForceSetRoomStateFromServer {
 			room_id,
 			server_name,
-		} => force_set_room_state_from_server(body, server_name, room_id).await?,
-		DebugCommand::ResolveTrueDestination {
+		} => process_command!(force_set_room_state_from_server(body, server_name, room_id)),
+		ResolveTrueDestination {
 			server_name,
 			no_cache,
-		} => resolve_true_destination(body, server_name, no_cache).await?,
-		DebugCommand::MemoryStats => memory_stats(),
-		DebugCommand::RuntimeMetrics => runtime_metrics(body).await?,
-		DebugCommand::RuntimeInterval => runtime_interval(body).await?,
-		DebugCommand::Tester(command) => tester::process(command, body).await?,
+		} => process_command!(resolve_true_destination(body, server_name, no_cache)),
+		MemoryStats => memory_stats(),
+		RuntimeMetrics => process_command!(runtime_metrics(body)),
+		RuntimeInterval => process_command!(runtime_interval(body)),
+		Tester(command) => process_command!(tester::process(command, body)),
 	})
 }
