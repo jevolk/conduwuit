@@ -69,7 +69,7 @@ version = "0.8.5"
 
 # Used for the http request / response body type for Ruma endpoints used with reqwest
 [workspace.dependencies.bytes]
-version = "1.7.1"
+version = "1.7.2"
 
 [workspace.dependencies.http-body-util]
 version = "0.1.1"
@@ -111,12 +111,12 @@ version = "0.7"
 version = "0.6.0"
 
 [workspace.dependencies.tower]
-version = "0.5.0"
+version = "0.5.1"
 default-features = false
 features = ["util"]
 
 [workspace.dependencies.tower-http]
-version = "0.5.2"
+version = "0.6.0"
 default-features = false
 features = [
     "add-extension",
@@ -129,7 +129,7 @@ features = [
 ]
 
 [workspace.dependencies.rustls]
-version = "0.23.12"
+version = "0.23.13"
 
 [workspace.dependencies.reqwest]
 version = "0.12.7"
@@ -258,7 +258,7 @@ features = [
 ]
 
 [workspace.dependencies.hyper-util]
-version = "0.1.6"
+version = "0.1.9"
 default-features = false
 features = [
 	"client",
@@ -315,7 +315,7 @@ version = "0.1.2"
 [workspace.dependencies.ruma]
 git = "https://github.com/girlbossceo/ruwuma"
 #branch = "conduwuit-changes"
-rev = "e7db44989d68406393270d3a91815597385d3acb"
+rev = "ade2f1daf0b1d9e8f7de81a24dca8925406e4d8e"
 features = [
     "compat",
     "rand",
