@@ -132,7 +132,7 @@ features = [
 version = "0.23.13"
 
 [workspace.dependencies.reqwest]
-version = "0.12.7"
+version = "0.12.8"
 default-features = false
 features = [
 	"rustls-tls-native-roots",
