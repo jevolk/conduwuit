@@ -716,6 +716,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_regex",
+ "serde_yaml",
  "thiserror",
  "tikv-jemalloc-ctl",
  "tikv-jemalloc-sys",
