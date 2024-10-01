@@ -258,7 +258,8 @@ features = [
 ]
 
 [workspace.dependencies.hyper-util]
-version = "0.1.9"
+# 0.1.9 causes DNS issues
+version = "=0.1.8"
 default-features = false
 features = [
 	"client",
