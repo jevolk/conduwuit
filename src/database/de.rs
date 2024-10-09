@@ -33,6 +33,11 @@ pub(crate) struct Deserializer<'de> {
 #[derive(Debug, Deserialize)]
 pub struct Ignore;
 
+/// Directive to ignore all remaining records. This can be used in a sequence to
+/// ignore the rest of the sequence.
+#[derive(Debug, Deserialize)]
+pub struct IgnoreAll;
+
 impl<'de> Deserializer<'de> {
 	/// Record separator; an intentionally invalid-utf8 byte.
 	const SEP: u8 = b'\xFF';
@@ -61,9 +66,15 @@ impl<'de> Deserializer<'de> {
 		if self.seq {
 			self.record_next();
 		} else {
-			self.record_trail();
+			self.record_ignore_all();
 		}
 	}
+
+	/// Consume the current and all remaining records to ignore them. Similar to
+	/// Ignore at the top-level, but it can be provided in a sequence to Ignore
+	/// all remaining elements.
+	#[inline]
+	fn record_ignore_all(&mut self) { self.record_trail(); }
 
 	/// Consume the current record. The position pointer is moved to the start
 	/// of the next record. Slice of the current record is returned.
@@ -170,6 +181,7 @@ impl<'a, 'de: 'a> de::Deserializer<'de> for &'a mut Deserializer<'de> {
 	{
 		match name {
 			"Ignore" => self.record_ignore(),
+			"IgnoreAll" => self.record_ignore_all(),
 			_ => unimplemented!("Unrecognized deserialization Directive {name:?}"),
 		};
 
