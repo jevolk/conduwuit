@@ -1,4 +1,4 @@
-#cargo-features = ["profile-rustflags"]
+cargo-features = ["profile-rustflags"]
 
 [workspace]
 resolver = "2"
@@ -344,9 +344,10 @@ version = "0.1.2"
 
 # Used for matrix spec type definitions and helpers
 [workspace.dependencies.ruma]
-git = "https://github.com/girlbossceo/ruwuma"
+#git = "https://github.com/girlbossceo/ruwuma"
 #branch = "conduwuit-changes"
-rev = "5dc3e0f81d614ed9dc96b50f646b2e4385291c55"
+#rev = "5dc3e0f81d614ed9dc96b50f646b2e4385291c55"
+path = "/home/ubuntu/ruma/crates/ruma"
 features = [
     "compat",
     "rand",
@@ -569,6 +570,15 @@ rev = "92e5e74063bf2a3b10414bcc8a0d68b235644280"
 git = "https://github.com/girlbossceo/core_affinity_rs"
 rev = "9c8e51510c35077df888ee72a36b4b05637147da"
 
+#[patch."https://github.com/girlbossceo/jemallocator".tikv-jemalloc-ctl]
+#path = "/home/ubuntu/jemallocator/jemalloc-ctl"
+
+#[patch."https://github.com/girlbossceo/jemallocator".tikv-jemallocator]
+#path = "/home/ubuntu/jemallocator/jemallocator"
+
+#[patch."https://github.com/girlbossceo/jemallocator".tikv-jemalloc-sys]
+#path = "/home/ubuntu/jemallocator/jemalloc-sys"
+
 #
 # Our crates
 #
@@ -622,53 +632,57 @@ lto = "thin"
 inherits = "release"
 debug = "full"
 strip = "none"
+lto = "off"
+codegen-units = 4
 
 [profile.release-high-perf]
 inherits = "release"
-lto = "fat"
-codegen-units = 1
+lto = "off"
+codegen-units = 4
 panic = "abort"
 
 # do not use without profile-rustflags enabled
 [profile.release-max-perf]
 inherits = "release"
-strip = "symbols"
-lto = "fat"
-#rustflags = [
-#	'-Ctarget-cpu=native',
-#	'-Ztune-cpu=native',
-#	'-Ctarget-feature=+crt-static',
-#	'-Crelocation-model=static',
-#	'-Ztls-model=local-exec',
-#	'-Zinline-in-all-cgus=true',
-#	'-Zinline-mir=true',
-#	'-Zmir-opt-level=3',
-#	'-Clink-arg=-fuse-ld=gold',
-#	'-Clink-arg=-Wl,--threads',
-#	'-Clink-arg=-Wl,--gc-sections',
-#	'-Clink-arg=-luring',
-#	'-Clink-arg=-lstdc++',
-#	'-Clink-arg=-lc',
-#	'-Ztime-passes',
-#	'-Ztime-llvm-passes',
-#]
+debug = "limited"
+strip = "none"
+lto = "off"
+codegen-units = 4
+rustflags = [
+	'-Ctarget-cpu=native',
+	'-Ztune-cpu=native',
+	'-Ctarget-feature=+crt-static',
+	'-Crelocation-model=static',
+	'-Ztls-model=local-exec',
+	'-Zinline-in-all-cgus=true',
+	'-Zinline-mir=true',
+	'-Zmir-opt-level=3',
+	'-Clink-arg=-fuse-ld=gold',
+	'-Clink-arg=-Wl,--threads',
+	'-Clink-arg=-Wl,--gc-sections',
+	'-Clink-arg=-luring',
+	'-Clink-arg=-lstdc++',
+	'-Clink-arg=-lc',
+	'-Ztime-passes',
+	'-Ztime-llvm-passes',
+]
 
 [profile.release-max-perf.build-override]
 inherits = "release-max-perf"
 opt-level = 0
 codegen-units = 32
-#rustflags = [
-#	'-Crelocation-model=pic',
-#	'-Ctarget-feature=-crt-static',
-#	'-Clink-arg=-Wl,--no-gc-sections',
-#]
+rustflags = [
+	'-Crelocation-model=pic',
+	'-Ctarget-feature=-crt-static',
+	'-Clink-arg=-Wl,--no-gc-sections',
+]
 
 [profile.release-max-perf.package.conduwuit_macros]
 inherits = "release-max-perf.build-override"
-#rustflags = [
-#	'-Crelocation-model=pic',
-#	'-Ctarget-feature=-crt-static',
-#]
+rustflags = [
+	'-Crelocation-model=pic',
+	'-Ctarget-feature=-crt-static',
+]
 
 [profile.bench]
 inherits = "release"
@@ -691,7 +705,7 @@ inherits = "release"
 # and can be raised if build times are tolerable.
 
 [profile.dev]
-debug = "full"
+debug = 0
 opt-level = 0
 panic = "unwind"
 debug-assertions = true

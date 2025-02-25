@@ -1,4 +1,4 @@
-use std::{convert::AsRef, sync::Arc};
+use std::{convert::AsRef, fmt::Debug, sync::Arc};
 
 use conduwuit::{
 	Result, implement,
@@ -8,7 +8,7 @@ use conduwuit::{
 	},
 };
 use futures::{Stream, StreamExt, TryStreamExt};
-use rocksdb::{DBPinnableSlice, ReadOptions};
+use rocksdb::{AsColumnFamilyRef, DBPinnableSlice, ReadOptions};
 
 use super::get::{cached_handle_from, handle_from};
 use crate::Handle;
@@ -104,4 +104,25 @@ where
 		.db
 		.batched_multi_get_cf_opt(&self.cf(), keys, SORTED, read_options)
 		.into_iter()
+}
+
+#[implement(super::Map)]
+#[tracing::instrument(name = "batch_blocking", level = "trace", skip_all)]
+pub(crate) fn get_multi_batch_blocking<'a, I, K, C>(
+	&'a self,
+	keys: I,
+) -> impl Iterator<Item = Result<Handle<'_>>> + 'a
+where
+	I: Iterator<Item = (&'a C, &'a K)> + 'a,
+	K: AsRef<[u8]> + Debug + ?Sized + 'a,
+	C: AsColumnFamilyRef + 'a,
+{
+	// Optimization can be `true` if key vector is pre-sorted **by the column
+	// comparator**.
+	const SORTED: bool = false;
+
+	self.db
+		.db
+		.batched_multi_get_multi_cf_opt(keys, SORTED, &self.read_options)
+		.map(handle_from)
 }

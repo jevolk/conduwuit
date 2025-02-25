@@ -129,23 +129,28 @@ pub(crate) async fn sync_events_route(
 	let watcher = services.sync.watch(sender_user, sender_device);
 
 	let response = build_sync_events(&services, &body).await?;
-	if body.body.full_state
+	if (body.body.full_state
 		|| !(response.rooms.is_empty()
 			&& response.presence.is_empty()
 			&& response.account_data.is_empty()
 			&& response.device_lists.is_empty()
-			&& response.to_device.is_empty())
+			&& response.to_device.is_empty()))
+		&& services.server.name != "uwu.zemos.net"
 	{
 		return Ok(response);
 	}
 
 	// Hang a few seconds so requests are not spammed
 	// Stop hanging if new info arrives
-	let default = Duration::from_secs(30);
+	let default = Duration::from_secs(5);
 	let duration = cmp::min(body.body.timeout.unwrap_or(default), default);
 	_ = tokio::time::timeout(duration, watcher).await;
 
 	// Retry returning data
+	if services.server.name == "uwu.zemos.net" {
+		return Ok(response);
+	}
+
 	build_sync_events(&services, &body).await
 }
 

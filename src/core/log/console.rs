@@ -64,7 +64,7 @@ impl io::Write for &'_ ConsoleWriter {
 }
 
 pub struct ConsoleFormat {
-	_compact: Format<Compact>,
+	compact: Format<Compact>,
 	full: Format<Full>,
 	pretty: Format<Pretty>,
 }
@@ -73,7 +73,10 @@ impl ConsoleFormat {
 	#[must_use]
 	pub fn new(config: &Config) -> Self {
 		Self {
-			_compact: fmt::format().compact(),
+			compact: fmt::format()
+				.compact()
+				.with_ansi(config.log_colors)
+				.with_thread_ids(config.log_thread_ids),
 
 			full: Format::<Full>::default()
 				.with_thread_ids(config.log_thread_ids)
@@ -103,11 +106,25 @@ where
 		writer: Writer<'_>,
 		event: &Event<'_>,
 	) -> Result<(), std::fmt::Error> {
-		let is_debug =
-			cfg!(debug_assertions) && event.fields().any(|field| field.name() == "_debug");
+		let has_field = |name_| {
+			event
+				.fields()
+				.map(|field| field.name())
+				.any(|name| name == name_)
+		};
+
+		let is_pretty = has_field("_pretty");
+		let is_compact = has_field("_compact");
+		let is_span = event.metadata().is_span();
+		let is_debug = cfg!(debug_assertions) && has_field("_debug");
 
 		match *event.metadata().level() {
-			| Level::ERROR if !is_debug => self.pretty.format_event(ctx, writer, event),
+			| _ if is_pretty => self.pretty.format_event(ctx, writer, event),
+			| _ if is_compact => self.compact.format_event(ctx, writer, event),
+
+			| Level::ERROR if !is_debug && !is_span =>
+				self.pretty.format_event(ctx, writer, event),
+
 			| _ => self.full.format_event(ctx, writer, event),
 		}
 	}

@@ -40,6 +40,7 @@ unsafe extern "C" {
 	pub unsafe fn rocksdb_create_column_family();
 	pub unsafe fn rocksdb_get_latest_sequence_number();
 	pub unsafe fn rocksdb_batched_multi_get_cf();
+	pub unsafe fn rocksdb_batched_multi_get_multi_cf();
 	pub unsafe fn rocksdb_cancel_all_background_work();
 	pub unsafe fn rocksdb_repair_db();
 	pub unsafe fn rocksdb_list_column_families_destroy();

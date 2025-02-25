@@ -1,0 +1,14 @@
+FROM base-test
+
+COPY --from=key_generator /usr/src/conduwuit .
+COPY --from=builder /usr/local/cargo/bin/conduwuit /usr/local/bin/conduwuit
+
+WORKDIR /usr/src/conduwuit
+RUN useradd -r conduwuit
+USER conduwuit
+
+WORKDIR /home/conduwuit/
+COPY ./docker/complement.toml .
+
+EXPOSE 8008 8448
+ENTRYPOINT [ "conduwuit" ]

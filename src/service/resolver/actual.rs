@@ -379,6 +379,7 @@ impl super::Service {
 		Ok(None)
 	}
 
+	#[tracing::instrument(name = "resolve", level = "error")]
 	fn handle_resolve_error(e: &ResolveError, host: &'_ str) -> Result<()> {
 		use hickory_resolver::error::ResolveErrorKind;
 
