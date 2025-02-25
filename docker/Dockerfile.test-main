@@ -1,0 +1,12 @@
+FROM "base" as builder
+FROM "keys" as keys
+FROM alpine:latest
+
+COPY --from=keys /usr/src/conduwuit /home/conduwuit
+COPY --from=builder /usr/local/cargo/bin/conduwuit /usr/local/bin/conduwuit
+
+RUN useradd -r conduwuit
+
+EXPOSE 8008 8448
+USER conduwuit
+WORKDIR /home/conduwuit/

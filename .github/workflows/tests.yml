@@ -1,0 +1,94 @@
+name: Integration Testing
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      commands:
+        type: string
+        required: false
+        #default: '["check", "build", "clippy", "test", "bench"]'
+        description: Cargo command vector
+      profiles:
+        type: string
+        required: false
+        #default: '["dev", "release"]'
+        description: Cargo profile vector
+      features:
+        type: string
+        required: false
+        #default: '["--no-default-features", "--features=default", "--all-features"]'
+        description: Cargo feature vector
+      toolchains:
+        type: string
+        required: false
+        #default: '["", "+nightly"]'
+        description: Rust toolchain vector
+      systems:
+        type: string
+        required: false
+        #default: '["ubuntu-24.10"]'
+        description: Operating system distribution vector
+      machines:
+        type: string
+        required: false
+        #default: '["x86_64"]'
+        description: Hardware platform vector
+
+concurrency:
+  group: ${{github.ref}}
+  cancel-in-progress: true
+
+env:
+  uwu_id: ${{vars.DOCKER_ID}}
+  uwu_url: https://github.com/${{github.repository}}
+
+jobs:
+  dependencies:
+    name: build dependencies
+    uses: ./.github/workflows/docker.yml
+    strategy:
+      fail-fast: false
+
+    with:
+      id: ${{github.env.uwu_id}}
+      url: ${{github.env.uwu_url}}
+      commands: ${{github.event.inputs.commands || vars.CARGO_COMMANDS}}
+      profiles: ${{github.event.inputs.profiles || vars.CARGO_PROFILES}}
+      features: ${{github.event.inputs.features || vars.CARGO_FEATURES}}
+      toolchains: ${{github.event.inputs.toolchains || vars.RUST_TOOLCHAINS}}
+      systems: ${{github.event.inputs.systems || vars.SYSTEMS}}
+      machines: ${{github.event.inputs.machines || vars.MACHINES}}
+      test: ${{contains(github.events.push.commits[0].message, '[ci test]')}}
+
+  integration:
+    name: integration testing
+    needs: dependencies
+    runs-on: ${{matrix.machine}}
+    strategy:
+      fail-fast: false
+      matrix:
+        command: ${{fromJSON(github.event.inputs.commands || vars.CARGO_COMMANDS)}}
+        profile: ${{fromJSON(github.event.inputs.profiles || vars.CARGO_PROFILES)}}
+        feature: ${{fromJSON(github.event.inputs.features || vars.CARGO_FEATURES)}}
+        toolchain: ${{fromJSON(github.event.inputs.toolchains || vars.RUST_TOOLCHAINS)}}
+        system: ${{fromJSON(github.event.inputs.systems || vars.SYSTEMS)}}
+        machine: ${{fromJSON(github.event.inputs.machines || vars.MACHINES)}}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: build
+      env:
+        uwu_commands: ${{matrix.command}}
+        uwu_profiles: ${{matrix.profile}}
+        wuu_features: ${{matrix.feature}}
+        uwu_toolchains: ${{matrix.toolchain}}
+        uwu_systems: ${{matrix.system}}
+        uwu_machines: ${{matrix.machine}}
+        uwu_test: ${{contains(github.events.push.commits[0].message, '[ci test]')}}
+
+      run: |
+        docker/ci.sh

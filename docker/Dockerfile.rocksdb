@@ -1,0 +1,31 @@
+FROM alpine:latest AS build
+
+RUN true \
+&& apk add --no-cache \
+	bzip2-dev \
+	gflags-dev \
+	liburing-dev \
+	lz4-dev \
+	snappy-dev \
+	zlib-dev \
+	zstd-dev \
+	git \
+	bash \
+	linux-headers \
+	make \
+	perl \
+	g++ \
+&& true
+
+WORKDIR /rocksdb
+ARG ROCKS_DB_TARGET
+
+RUN true \
+&& git clone --depth=1 https://github.com/girlbossceo/rocksdb.git -b v9.9.3 . \
+&& make ${ROCKS_DB_TARGET} \
+&& true
+
+FROM scratch
+
+WORKDIR /
+COPY --from=build /rocksdb/librocksdb.so /librocksdb.so

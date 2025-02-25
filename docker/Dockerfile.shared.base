@@ -1,0 +1,52 @@
+FROM rust:1.84-slim AS chef
+USER root
+RUN true \
+&& rustup component add rustfmt \
+&& cargo install cargo-chef \
+&& apt-get update \
+&& apt-get install -y \
+	librocksdb-dev \
+	libjemalloc-dev \
+	liburing-dev \
+	clang \
+	build-essential \
+	pkg-config \
+	libsnappy-dev
+
+WORKDIR /usr/src/conduwuit
+FROM chef AS planner
+COPY . .
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo chef prepare
+
+FROM chef
+ARG CARGO_PROFILE
+COPY --from=planner /usr/src/conduwuit/recipe.json recipe.json
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo chef cook \
+	--profile ${CARGO_PROFILE} \
+	--all-features \
+	--target x86_64-unknown-linux-gnu
+
+COPY . .
+ENV RUST_BACKTRACE=1
+ENV RUSTFLAGS="\
+	-Clink-arg=-lc \
+	-Cprefer-dynamic=true \
+	-Zpacked-bundled-libs=true \
+	-Ztls-model=global-dynamic \
+	-Zplt=true \
+	-Clink-arg=-luring -Clink-arg=-lstdc++ -Clink-arg=-luring \
+"
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo install \
+	--path ./src/main \
+	--profile ${CARGO_PROFILE} \
+	--all-features \
+	--target x86_64-unknown-linux-gnu
