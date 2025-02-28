@@ -1,0 +1,79 @@
+ARG sys_name=rustlang/rust
+ARG sys_version=nightly-slim
+
+FROM ${sys_name}:${sys_version} as build
+ARG nprocs=1
+ARG rocksdb_version 
+ARG rocksdb_url
+ARG rocksdb_shared=0
+ARG rocksdb_avx=1
+ARG rocksdb_avx2=1
+
+ENV nprocs ${nprocs}
+ENV rocksdb_version ${rocksdb_version}
+ENV rocksdb_url https://codeload.github.com/facebook/rocksdb/tar.gz/refs/tags/v${rocksdb_version}
+ENV rocksdb_avx ${rocksdb_avx}
+ENV rocksdb_avx2 ${rocksdb_avx2}
+ENV rocksdb_shared ${rocksdb_shared}
+ENV rocksdb_cmake="\
+-DCMAKE_RULE_MESSAGES:BOOL=OFF \
+-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+-DCMAKE_BUILD_TYPE=Release \
+-DBUILD_SHARED_LIBS=${rocksdb_shared} \
+-DFAIL_ON_WARNINGS=0 \
+-DUSE_RTTI=0 \
+-DPORTABLE=1 \
+-DFORCE_AVX=${rocksdb_avx} \
+-DFORCE_AVX2=${rocksdb_avx2} \
+-DWITH_JNI=0 \
+-DWITH_TESTS=0 \
+-DWITH_BENCHMARK_TOOLS=0 \
+-DWITH_TRACE_TOOLS=0 \
+-DWITH_CORE_TOOLS=0 \
+-DWITH_TOOLS=0 \
+-DWITH_GFLAGS=0 \
+-DWITH_LIBURING=1 \
+-DWITH_JEMALLOC=1 \
+-DWITH_ZSTD=1 \
+-DWITH_LZ4=1 \
+-DWITH_ZLIB=1 \
+-DWITH_BZ2=1 \
+"
+
+ENV CC="clang"
+ENV CXX="clang++"
+ENV packages="\
+build-essential \
+clang \
+cmake \
+curl \
+libbz2-dev \
+libjemalloc-dev \
+liblz4-dev \
+liburing-dev \
+libz-dev \
+libzstd-dev \
+xz-utils \
+"
+
+WORKDIR /usr/src/rocksdb
+RUN true \
+&& export DEBIAN_FRONTEND=noninteractive \
+&& apt-get update \
+&& apt-get install --no-install-recommends -y -f ${packages} \
+&& curl -sL ${rocksdb_url} -o rocksdb-v${rocksdb_version}.tar.gz \
+&& tar xfz rocksdb-v${rocksdb_version}.tar.gz \
+&& ls -l \
+&& cd rocksdb-${rocksdb_version} \
+&& \
+   LDFLAGS="-Wl,--strip-all" \
+   CFLAGS="-g0 -ftls-model=initial-exec" \
+   cmake -H. -Bbuild ${rocksdb_cmake} \
+&& cmake --build build --target install --parallel ${nprocs} \
+&& true
+
+
+FROM scratch
+
+WORKDIR /
+COPY --from=build /usr/src/rocksdb/librocksdb.* /

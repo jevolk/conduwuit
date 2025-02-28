@@ -1,0 +1,73 @@
+ARG sys_name=rustlang/rust
+ARG sys_version=nightly-slim
+
+FROM ${sys_name}:${sys_version} AS chef
+ARG rust_toolchain
+
+ENV debian_packages="\
+build-essential \
+clang \
+git \
+libjemalloc-dev \
+libsnappy-dev \
+liburing-dev \
+pkg-config \
+"
+
+USER root
+RUN \
+--mount=type=bind,dst=/mnt/source,from=source \
+--mount=type=cache,dst=/var/cache/apt,from=cache_apt,sharing=locked \
+--mount=type=cache,dst=/var/lib/apt/lists,sharing=locked \
+--mount=type=cache,dst=/root/.cargo/registry,from=cache_reg,sharing=locked \
+true \
+&& apt-get update \
+&& apt-get install -y ${debian_packages} \
+&& rustup component add clippy \
+&& rustup run ${rust_toolchain} cargo install cargo-chef \
+&& git clone /mnt/source/ /usr/src/conduwuit \
+&& apt-get remove -y --auto-remove \
+&& rm -rf /var/lib/apt/lists/* \
+&& true
+
+
+FROM chef AS planner
+ARG rust_toolchain
+
+WORKDIR /usr/src/conduwuit
+RUN \
+--mount=type=cache,dst=/root/.cargo/registry,from=chef \
+--mount=type=cache,dst=/usr/src/conduwuit/target,from=chef,sharing=private \
+true \
+&& rustup run ${rust_toolchain} cargo chef prepare \
+--recipe-path recipe.json
+
+
+FROM planner
+ARG cargo_profile
+ARG cargo_features
+ARG rust_toolchain
+ARG rust_target
+ARG cook_args
+
+ENV ROCKSDB_LIB_DIR="/usr/lib/rocksdb"
+WORKDIR /usr/src/conduwuit
+COPY --from=planner --link /usr/src/conduwuit/recipe.json recipe.json
+RUN \
+--mount=type=cache,dst=/root/.cargo/registry,from=planner \
+--mount=type=cache,dst=/usr/lib/rocksdb,from=rocksdb,sharing=locked,ro \
+--mount=type=cache,dst=/usr/src/conduwuit/target,from=planner,sharing=private \
+true \
+&& rustup run ${rust_toolchain} cargo chef cook ${cook_args} \
+--recipe-path recipe.json \
+--locked \
+--profile ${cargo_profile} \
+--features ${cargo_features} \
+--target ${rust_target} \
+&& true
+#&& cargo install \
+#	--locked \
+#	--path /usr/src/conduwuit/src/main \
+#	--profile ${cargo_profile} \
+#	--features ${cargo_features} \
+#	--target ${rust_target}

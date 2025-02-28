@@ -1,0 +1,78 @@
+name: Bakery
+
+on:
+  workflow_call:
+    inputs:
+      id:
+        type: string
+        description: Dockerhub acct/repo identity.
+      url:
+        type: string
+        description: Git repository for checkout.
+      commands:
+        type: string
+        required: false
+        default: '["check"]'
+        description: Command vector
+      profiles:
+        type: string
+        required: false
+        default: '["dev"]'
+        description: Cargo profile vector
+      features:
+        type: string
+        required: false
+        default: '["default"]'
+        description: Cargo feature vector
+      toolchains:
+        type: string
+        required: false
+        default: '["+nightly"]'
+        description: Rust toolchain vector
+      systems:
+        type: string
+        required: false
+        default: '["alpine:latest"]'
+        description: Operation system distribution vector
+      machines:
+        type: string
+        required: false
+        default: '["x86_64"]'
+        description: Hardware platform vector
+
+concurrency:
+  group: ${{github.workflow}}-${{inputs}}
+  cancel-in-progress: false
+
+env:
+  uwu_id: ${{inputs.id}}
+  uwu_url: ${{inputs.url}}
+
+jobs:
+  build:
+    name: build images
+    runs-on: ${{matrix.machine}}
+    strategy:
+      fail-fast: false
+      matrix:
+        command: ${{fromJSON(inputs.commands)}}
+        profile: ${{fromJSON(inputs.profiles)}}
+        feature: ${{fromJSON(inputs.features)}}
+        toolchain: ${{fromJSON(inputs.toolchains)}}
+        system: ${{fromJSON(inputs.systems)}}
+        machine: ${{fromJSON(inputs.machines)}}
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: build
+      env:
+        uwu_input: ${{inputs}}
+        uwu_commands: ${{matrix.command}}
+        uwu_profiles: ${{matrix.profile}}
+        uwu_features: ${{matrix.feature}}
+        uwu_toolchains: ${{matrix.toolchain}}
+        uwu_systems: ${{matrix.system}}
+        uwu_machines: ${{matrix.machine}}
+
+      run: |
+        docker/bake.sh

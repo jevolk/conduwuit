@@ -1,6 +1,6 @@
 # Local build and dev artifacts
 target
-tests
+#tests
 
 # Docker files
 Dockerfile*
@@ -11,17 +11,17 @@ Dockerfile*
 *.iml
 
 # Git folder
-.git
-.gitea
-.gitlab
-.github
+#.git
+#.gitea
+#.gitlab
+#.github
 
 # Dot files
 .env
 .gitignore
 
 # Toml files
-rustfmt.toml
+#rustfmt.toml
 
 # Documentation
 #*.md

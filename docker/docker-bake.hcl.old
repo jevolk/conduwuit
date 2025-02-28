@@ -1,0 +1,90 @@
+variable "acct" {}
+variable "repo" {}
+variable "uwu_url" {}
+variable "sys_name" {}
+variable "sys_version" {}
+
+variable "sauces" {}
+variable "commands" {}
+variable "cargo_profiles" {}
+variable "cargo_features" {}
+variable "rust_toolchains" {}
+variable "systems" {}
+variable "machines" {}
+
+target "default" {
+	inherits = ["shared-base"]
+#	inherits = ["complement"]
+}
+
+### sauces
+
+#target "complement" {
+#	inherits = ["static-base-test","keys"]
+#	tags = ["conduwuit-complement:latest"]
+#}
+
+#target "keys" {
+#	context = "./docker"
+#	dockerfile = "Dockerfile.keys"
+#	output = ["type=cacheonly"]
+#}
+
+### shared
+
+group "shared" {
+	targets = ["shared-base"]
+}
+
+target "shared-base" {
+	context = "./docker"
+	dockerfile = "Dockerfile.shared"
+	output = ["type=cacheonly"]
+}
+
+### static
+
+group "static" {
+	targets = ["static-base-test"]
+}
+
+target "static-base-test" {
+	inherits = ["static-base-profile-test","keys"]
+	dockerfile = "Dockerfile.test-main"
+	contexts = {
+		base = "target:static-base-profile-test"
+		keys = "target:keys"
+	}
+}
+
+target "static-base-profile-test"{
+	inherits = ["static-base"]
+	args = {
+		CARGO_PROFILE = "test-max-perf"
+	}
+}
+
+target "static-base" {
+	context = "./docker"
+	dockerfile = "Dockerfile.static.base"
+	output = ["type=cacheonly"]
+	contexts = {
+		rocksdb = "target:rocksdb-static"
+	}
+}
+
+### rocksdb
+
+target "rocksdb-static" {
+	inherits = ["rocksdb-base"]
+	tags = ["rocksdb-static:v9.9.3"]
+	args = {
+		rocksdb_version = "v9.9.3"
+		rocksdb_shared = 0
+	}
+}
+
+target "rocksdb-base" {
+	context = "./docker"
+	dockerfile = "Dockerfile.rocksdb"
+}

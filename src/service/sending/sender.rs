@@ -141,6 +141,7 @@ impl Service {
 		}
 	}
 
+	#[tracing::instrument(name = "response", level = "error", skip(statuses))]
 	fn handle_response_err(dest: Destination, statuses: &mut CurTransactionStatus, e: &Error) {
 		debug!(dest = ?dest, "{e:?}");
 		statuses.entry(dest).and_modify(|e| {

@@ -1,0 +1,57 @@
+FROM clux/muslrust:stable AS chef
+USER root
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo install cargo-chef --target x86_64-unknown-linux-musl
+
+RUN true \
+&& apt-get update \
+&& apt-get install -y librocksdb-dev clang liburing-dev libjemalloc-dev libsnappy-dev mold \
+&& ln -s /bin/g++ /bin/musl-g++ \
+&& true
+
+WORKDIR /usr/src/conduwuit
+FROM chef AS planner
+COPY . .
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo chef prepare --recipe-path ./recipe.json
+
+FROM chef
+ARG CARGO_PROFILE
+COPY --from=rocksdb /librocksdb.so /usr/src/conduwuit/lib/
+ENV ROCKSDB_STATIC=0
+ENV ROCKSDB_LIB_DIR=/usr/src/conduwuit/lib/
+ENV RUSTFLAGS=\
+	-Ctarget-feature=+crt-static \
+	-Crelocation-model=static \
+    -Clink-arg=-lc \
+    -Clink-arg=-lstdc++ \
+    -Clink-arg=-fuse-ld=mold \
+    -Ctarget-cpu=native \
+    -Ztune-cpu=native \
+    -Ztls-model=local-exe \
+    -Clink-arg=-luring  \
+    -Clink-arg=-Lrocksdb
+
+COPY --from=planner /usr/src/conduwuit/recipe.json recipe.json
+
+RUN true \
+&& cargo chef cook \
+	--profile ${CARGO_PROFILE} \
+	--recipe-path recipe.json \
+	--target \
+	x86_64-unknown-linux-musl \
+&& true
+
+COPY . .
+RUN \
+--mount=type=cache,target=/usr/local/cargo/registry \
+--mount=type=cache,target=/usr/src/conduwuit/target \
+cargo install \
+	--path ./src/main \
+	--profile ${CARGO_PROFILE} \
+	--target \
+	x86_64-unknown-linux-musl

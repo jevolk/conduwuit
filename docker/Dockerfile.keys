@@ -1,0 +1,9 @@
+FROM alpine/openssl:latest AS key_generator
+
+WORKDIR /usr/src/conduwuit
+COPY ./scripts/generate-certificates.sh .
+
+RUN true \
+&& chmod +x ./generate-certificates.sh \
+&& ./generate-certificates.sh \
+true

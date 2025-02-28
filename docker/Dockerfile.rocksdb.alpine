@@ -1,0 +1,74 @@
+ARG sys_name alpine
+ARG sys_version latest
+
+FROM ${sys_name}:${sys_version}
+
+ARG nprocs 1
+ARG rocksdb_version 
+ARG rocksdb_url
+ARG rocksdb_shared 0
+ARG rocksdb_avx 1
+ARG rocksdb_avx2 0
+
+ENV nprocs ${nprocs}
+ENV rocksdb_version ${rocksdb_version}
+ENV rocksdb_url https://codeload.github.com/facebook/rocksdb/tar.gz/refs/tags/${rocksdb_version}
+ENV rocksdb_avx ${rocksdb_avx}
+ENV rocksdb_avx2 ${rocksdb_avx2}
+ENV rocksdb_shared ${rocksdb_shared}
+ENV rocksdb_cmake="\
+-DCMAKE_RULE_MESSAGES:BOOL=OFF \
+-DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
+-DCMAKE_BUILD_TYPE=Release \
+-DBUILD_SHARED_LIBS=${rocksdb_shared} \
+-DFAIL_ON_WARNINGS=0 \
+-DUSE_RTTI=0 \
+-DPORTABLE=1 \
+-DFORCE_AVX=${rocksdb_avx} \
+-DFORCE_AVX2=${rocksdb_avx2} \
+-DWITH_JNI=0 \
+-DWITH_TESTS=0 \
+-DWITH_BENCHMARK_TOOLS=0 \
+-DWITH_TRACE_TOOLS=0 \
+-DWITH_CORE_TOOLS=0 \
+-DWITH_TOOLS=0 \
+-DWITH_GFLAGS=0 \
+-DWITH_LIBURING=1 \
+-DWITH_JEMALLOC=1 \
+-DWITH_LZ4=1 \
+-DWITH_ZSTD=1 \
+"
+
+ENV alpine_packages="\
+bash \
+curl \
+g++ \
+git \
+gzip \
+jemalloc-dev \
+liburing-dev \
+linux-headers \
+lz4-dev \
+make \
+perl \
+snappy-dev \
+zlib-dev \
+zstd-dev \
+"
+
+WORKDIR /rocksdb
+RUN true \
+&& apk add --no-cache ${alpine_packages} \
+&& curl -sL ${rocksdb_url} -o rocksdb-${rocksdb_version}.tar.gz \
+&& tar xfz rocksdb-${rocksdb_version}.tar.gz \
+&& \
+   CFLAGS="-g0 -ftls-model=initial-exec" \
+   LDFLAGS="-Wl,--strip-all" \
+   cmake -H. -Bbuild ${rocksdb_cmake} \
+&& cmake --build build --target install --parallel ${nprocs} \
+&& true
+
+FROM scratch
+
+WORKDIR /
+COPY --from=build /rocksdb/librocksdb.* /
