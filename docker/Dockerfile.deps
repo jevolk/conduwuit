@@ -1,0 +1,55 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS chef
+ARG sys_target
+ARG rust_target
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+ARG cargo_profile
+ARG cargo_features
+ARG cargo_verbose_arg
+ARG cargo_target_dir
+ARG cook_args
+
+WORKDIR /usr/lib/${sys_target}
+COPY --from=rocksdb . .
+
+WORKDIR /usr/src/conduwuit
+COPY --link --from=recipe recipe.json .
+
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+ENV ROCKSDB_LIB_DIR="/usr/lib/${sys_target}"
+ENV JEMALLOC_OVERRIDE="/usr/lib/${sys_target}/libjemalloc.so"
+ENV RUST_BACKTRACE="full"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+--mount=type=cache,dst=${cargo_target_dir},sharing=locked \
+<<EOF
+	set -eux
+	rustup run ${rust_toolchain} \
+		cargo chef cook ${cook_args} \
+			--locked \
+			--workspace \
+			--no-default-features \
+			--features "${cargo_features}" \
+			--profile "${cargo_profile}" \
+			--target "${rust_target}" \
+			--target-dir "${cargo_target_dir}" \
+			--manifest-path Cargo.toml \
+			--recipe-path recipe.json \
+			${cargo_verbose_arg}
+
+	# If this image is further reused with other cargo commands, all
+	# modifications made by cargo chef cook outside of target-dir have to be
+	# cleared. If not, resulting build artifacts will link incorrectly, even
+	# without error. For example, a target executable may be produced which
+	# does nothing except exit(0). If you have observed a smoketest failing in
+	# such a manner, investigate this as a cause of the issue.
+	git checkout Cargo.toml Cargo.lock src/
+	rm recipe.json
+EOF

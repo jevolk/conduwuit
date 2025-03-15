@@ -1,0 +1,55 @@
+name: Linting
+
+on:
+  push:
+    branches:
+      - main
+
+  workflow_dispatch:
+    inputs:
+      baket:
+        type: string
+        required: false
+        description: JSON Object of inputs passed to the environment
+
+concurrency:
+  group: ${{github.ref}}
+  cancel-in-progress: true
+
+env:
+  uwu_id: ${{vars.DOCKER_ID}}
+  uwu_url: https://github.com/${{github.repository}}
+
+jobs:
+  rustfmt:
+    if: ${{contains(fromJSON(github.event.inputs).bake.commands || vars.COMMANDS, 'fmt')}}
+
+    name: Formatting
+    uses: ./.github/workflows/bake.yml
+    strategy:
+      fail-fast: false
+
+    with:
+      id: ${{github.env.uwu_id}}
+      url: ${{github.env.uwu_url}}
+      commands: '["fmt"]'
+      profiles: ${{fromJSON(fromJSON(github.event.inputs).bake.profiles || vars.CARGO_PROFILES)}}
+      features: ${{fromJSON(fromJSON(github.event.inputs).bake.features || vars.CARGO_FEATURES)}}
+      toolchains: ${{fromJSON(fromJSON(github.event.inputs).bake.toolchains || vars.RUST_TOOLCHAINS)}}
+      systems: ${{fromJSON(fromJSON(github.event.inputs).bake.systems || vars.SYSTEMS)}}
+      machines: ${{fromJSON(fromJSON(github.event.inputs).bake.machines || vars.MACHINES)}}
+
+  clippy:
+    if: ${{contains(fromJSON(github.event.inputs).bake.commands || vars.COMMANDS, 'clippy')}}
+
+    name: Clippy
+    uses: ./.github/workflows/bake.yml
+    with:
+      id: ${{github.env.uwu_id}}
+      url: ${{github.env.uwu_url}}
+      commands: '["clippy"]'
+      profiles: ${{fromJSON(fromJSON(github.event.inputs).bake.profiles || vars.CARGO_PROFILES)}}
+      features: ${{fromJSON(fromJSON(github.event.inputs).bake.features || vars.CARGO_FEATURES)}}
+      toolchains: ${{fromJSON(fromJSON(github.event.inputs).bake.toolchains || vars.RUST_TOOLCHAINS)}}
+      systems: ${{fromJSON(fromJSON(github.event.inputs).bake.systems || vars.SYSTEMS)}}
+      machines: ${{fromJSON(fromJSON(github.event.inputs).bake.machines || vars.MACHINES)}}

@@ -1,0 +1,74 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS ingredients
+ARG rust_target
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+ARG cargo_verbose_arg
+ARG cargo_target_dir
+ARG git_checkout
+
+WORKDIR /usr/src
+ADD --link --keep-git-dir . conduwuit
+WORKDIR /usr/src/conduwuit
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+SHELL ["/bin/bash", "-cl"]
+RUN <<EOF
+	set -eux
+	git checkout --detach ${git_checkout}
+EOF
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+--mount=type=cache,dst=${cargo_target_dir},sharing=locked \
+<<EOF
+	set -eux
+	git submodule update --init --recursive -N
+	rustup run ${rust_toolchain} \
+		cargo fetch \
+			--locked \
+			${cargo_verbose_arg} \
+			--target ${rust_target}
+EOF
+
+
+FROM input AS preparing
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+ARG cargo_verbose_arg
+ARG cargo_target_dir
+
+WORKDIR /usr/src/conduwuit
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+--mount=type=cache,dst=${cargo_target_dir},sharing=locked \
+<<EOF
+	set -euxo pipefail
+
+    rustup run ${rust_toolchain} \
+        cargo chef prepare \
+            --recipe-path recipe.json
+
+	manifest="Cargo.toml"
+	package="rust-librocksdb-sys"
+	url="$(cargo tree --manifest-path ${manifest} -f '{r}' -p ${package} | head -n 1)"
+	echo "$url" > rocksdb.url
+
+	sha1sum recipe.json rocksdb.url
+EOF
+
+
+FROM scratch AS recipe
+
+WORKDIR /
+COPY --from=preparing /usr/src/conduwuit/recipe.json .
+COPY --from=preparing /usr/src/conduwuit/rocksdb.url .

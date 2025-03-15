@@ -1,0 +1,18 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS chef
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+<<EOF
+	set -eux
+	rustup run ${rust_toolchain} cargo install cargo-chef
+EOF

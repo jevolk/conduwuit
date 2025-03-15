@@ -1,0 +1,61 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS install
+ARG sys_target
+ARG rust_target
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+ARG cargo_profile
+ARG cargo_features
+ARG cargo_verbose_arg
+ARG cargo_target_dir
+ARG crate_ident=""
+ARG install_root="/usr"
+
+WORKDIR /usr/lib/${sys_target}
+COPY --from=rocksdb --exclude=librocksdb.a . .
+
+WORKDIR /usr/src/conduwuit
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+ENV ROCKSDB_LIB_DIR="/usr/lib/${sys_target}"
+ENV JEMALLOC_OVERRIDE="/usr/lib/${sys_target}/libjemalloc.so"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=bind,dst=${cargo_home},from=build,source=${cargo_home},rw \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+--mount=type=bind,dst=/root,from=build,source=/root,rw \
+--mount=type=bind,dst=/usr/src/conduwuit,from=build,source=/usr/src/conduwuit,rw \
+--mount=type=cache,dst=${cargo_target_dir},sharing=locked \
+<<EOF
+	set -eux
+
+	case "$cargo_profile" in
+		    "dev") profile_dir="debug";;
+		   "test") profile_dir="debug";;
+		"release") profile_dir="release";;
+		  "bench") profile_dir="release";;
+		        *) profile_dir="$cargp_profile";;
+	esac
+
+	rustup -v toolchain list
+	rustup run ${rust_toolchain} \
+		cargo install \
+			--locked \
+			--no-default-features \
+			--features "${cargo_features}" \
+			--profile "${cargo_profile}" \
+			--target "${rust_target}" \
+			--root "${install_root}" \
+			--target-dir "${cargo_target_dir}" \
+			--path src/main \
+			${cargo_verbose_arg} \
+			${crate_ident}
+
+	bin="${install_root}/bin/conduwuit"
+	sha1sum $bin
+	du -h $bin
+EOF

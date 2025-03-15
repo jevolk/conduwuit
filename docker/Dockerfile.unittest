@@ -1,0 +1,52 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input as unittest
+ARG sys_target
+ARG rust_target
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+ARG cargo_profile
+ARG cargo_features
+ARG cargo_verbose_arg
+ARG cargo_target_dir
+ARG cargo_test_nocapture
+ARG nprocs
+ARG test=""
+
+WORKDIR /usr/lib/${sys_target}
+COPY --from=rocksdb . .
+
+WORKDIR /usr/src/conduwuit
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+ENV ROCKSDB_LIB_DIR="/usr/lib/${sys_target}"
+ENV JEMALLOC_OVERRIDE="/usr/lib/${sys_target}/libjemalloc.so"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=bind,dst=${cargo_home},from=build-tests,source=${cargo_home},rw \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+--mount=type=bind,dst=/root,from=build-tests,source=/root,rw \
+--mount=type=bind,dst=/usr/src/conduwuit,from=build-tests,source=/usr/src/conduwuit,rw \
+--mount=type=cache,dst=${cargo_target_dir},sharing=locked \
+<<EOF
+	set -eux
+	nprocs=${nprocs:=$(nproc)}
+	rustup run ${rust_toolchain} \
+		cargo test \
+			--locked \
+			--workspace \
+			--all-targets \
+			--no-fail-fast \
+			--no-default-features \
+			--features "${cargo_features}" \
+			--profile "${cargo_profile}" \
+			--target "${rust_target}" \
+			--target-dir "${cargo_target_dir}" \
+			${cargo_verbose_arg} \
+			${test} -- \
+			--test-threads=${nprocs} \
+			${cargo_test_nocapture}
+EOF

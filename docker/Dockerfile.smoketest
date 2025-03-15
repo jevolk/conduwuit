@@ -1,0 +1,74 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS smoketest-version
+
+RUN <<EOF
+	set -eux
+	conduwuit -V
+	version=$(conduwuit -V)
+	/bin/test -n "$version"
+EOF
+
+
+FROM input AS smoketest-startup
+
+ENV CONDUWUIT_LOG="info"
+RUN <<EOF
+	set -eux
+	conduwuit \
+		-Otest='["smoke"]' \
+		-Oserver_name=\"localhost\" \
+		-Odatabase_path=\"/tmp/smoketest.db\"
+EOF
+
+
+FROM input AS smoketest-perf
+ARG var_cache
+ARG var_lib_apt
+
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV CONDUWUIT_LOG="error"
+RUN \
+--mount=type=cache,dst=${var_cache},sharing=locked \
+--mount=type=cache,dst=${var_lib_apt},sharing=locked \
+<<EOF
+	set -eux
+	apt-get -y -U install --no-install-recommends perf-tools-unstable
+EOF
+ENTRYPOINT \
+	perf stat \
+	-j \
+	-ddd \
+	conduwuit \
+	-Otest='["smoke"]' \
+	-Olistening=false \
+	-Oserver_name=\"localhost\" \
+	-Odatabase_path=\"/tmp/smoketest.db\"
+
+
+FROM input AS smoketest-valgrind
+ARG var_cache
+ARG var_lib_apt
+
+ENV DEBIAN_FRONTEND="noninteractive"
+ENV CONDUWUIT_LOG="info"
+RUN \
+--mount=type=cache,dst=${var_cache},sharing=locked \
+--mount=type=cache,dst=${var_lib_apt},sharing=locked \
+<<EOF
+	set -eux
+	apt-get update
+	apt-get -y -U install --no-install-recommends valgrind
+EOF
+SHELL ["/bin/bash", "-cl"]
+ENV LD_BIND_NOW=1
+ENTRYPOINT valgrind \
+	--verbose \
+	--leak-check=no \
+	--undef-value-errors=no \
+	--exit-on-first-error=yes \
+	--error-exitcode=1 \
+	conduwuit \
+		-Otest='["smoke"]' \
+		-Oserver_name=\"localhost\" \
+		-Odatabase_path=\"/tmp/smoketest.db\"

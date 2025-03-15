@@ -1,0 +1,45 @@
+# syntax = docker/dockerfile:1.11-labs
+
+FROM input AS cookware
+ARG rust_target
+ARG rust_toolchain
+ARG rust_home
+ARG cargo_home
+
+WORKDIR /opt
+ENV RUSTUP_HOME="${rust_home}"
+ENV CARGO_HOME="${cargo_home}"
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+<<EOF
+	set -eux
+
+	curl -O "https://static.rust-lang.org/rustup/archive/1.28.1/${rust_target}/rustup-init"
+	chmod o+x rustup-init
+	./rustup-init -y \
+		--profile minimal \
+		--default-toolchain ${rust_toolchain} \
+		--default-host ${rust_target}
+
+	chmod -R go+rw $CARGO_HOME $RUSTUP_HOME
+	rm rustup-init
+EOF
+SHELL ["/bin/bash", "-cl"]
+RUN \
+--mount=type=cache,dst=${rust_home},sharing=locked \
+--mount=type=cache,dst=${cargo_home}/registry,sharing=locked \
+--mount=type=cache,dst=${cargo_home}/git/db,sharing=locked \
+<<EOF
+	set -eux
+	rustup toolchain install \
+		--profile minimal \
+		--no-self-update \
+		${rust_toolchain}-${rust_target}
+
+	rustup default ${rust_toolchain}-${rust_target}
+	rustup override set ${rust_toolchain}-${rust_target}
+	rustup component add clippy
+EOF
